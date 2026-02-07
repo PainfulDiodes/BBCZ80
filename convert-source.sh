@@ -13,8 +13,8 @@
 
 set -e
 
-SRC_DIR="repo/src"
-BACKUP_DIR="repo/src-backup"
+SRC_DIR="src"
+BACKUP_DIR="src-backup"
 
 echo "Translating CP/M directives to z88dk syntax"
 echo "============================================"

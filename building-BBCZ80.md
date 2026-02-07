@@ -63,7 +63,7 @@ The `convert-source.sh` script automates this conversion:
 ./convert-source.sh
 ```
 
-This creates backups in `repo/src-backup/` before modifying files in place.
+This creates backups in `src-backup/` before modifying files in place.
 
 ## Build Approach
 

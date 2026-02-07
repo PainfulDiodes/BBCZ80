@@ -55,7 +55,7 @@ set -e  # Exit on error
 
 # Configuration
 OUTPUT_DIR="output"
-SRC_DIR="repo/src"
+SRC_DIR="src"
 
 # Target selection
 TARGET="${1:-cpm}"
