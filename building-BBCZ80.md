@@ -139,6 +139,51 @@ Note: The DATA segment currently follows code directly instead of being placed a
 - Automate testing against reference binaries
 - Consider creating a BeanZee target configuration
 
+### Achieving Binary Equality
+
+Binary comparison of the build output against reference binaries (`bin/acorn/BBCBASIC.COM`) reveals two differences:
+
+#### DATA segment address offset (228 bytes)
+
+All 333 differing bytes are DATA address relocations. Every reference to a DATA variable differs by exactly 0xE4 (228 bytes):
+
+| Symbol | Reference | Build   |
+|--------|-----------|---------|
+| ACCS   | 0x4C00    | 0x4B1C  |
+| BUFFER | 0x4D00    | 0x4C1C  |
+| STAVAR | 0x4E00    | 0x4D1C  |
+
+The offset is `0x4C00 - 0x4B1C = 0xE4` because the build places DATA immediately after code ends (0x4B1C) rather than at the fixed 0x4C00 origin.
+
+#### Binary size difference (540 bytes)
+
+| Binary            | Size         | Ends at |
+|-------------------|--------------|---------|
+| Reference (Acorn) | 19,200 bytes | 0x4C00  |
+| Build output      | 19,740 bytes | 0x4E1C  |
+
+The reference binary ends exactly where DATA begins (0x4C00), excluding the DATA segment. The build includes the entire DATA segment (768 bytes of zeros). The difference: 768 - 228 = 540 bytes.
+
+**To match the reference binary:**
+
+1. Use z88dk `SECTION` directives to place DATA at the fixed origin:
+   - CP/M: 0x4B00
+   - Acorn: 0x4C00
+
+2. Add padding between code end and DATA start (228 bytes for Acorn)
+
+3. Exclude the DATA segment from the binary output (or truncate at DATA origin)
+
+The z88dk approach would involve:
+
+```asm
+; In DATA.asm
+SECTION DATA
+ORG 0x4C00      ; Fixed origin for Acorn target
+```
+
+And linker options to control section placement. See z88dk documentation for `SECTION` and `-r` options.
+
 ---
 
 ## Notes
