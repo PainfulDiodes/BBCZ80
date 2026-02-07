@@ -1,20 +1,55 @@
+# Alternative Build Approach: Modular Build
+
+This document describes an alternative build approach that preserves the original modular structure of BBC BASIC Z80. The main build uses an include-based approach (see [building-BBCZ80.md](building-BBCZ80.md)).
+
+## Modular Build
+
+This approach mirrors the original CP/M linker-based build.
+
+### Process
+
+1. Assemble each module separately to object files
+2. Link object files together
+3. Handle DATA segment placement separately
+
+### Advantages
+
+- Preserves original code structure
+- Faster incremental rebuilds (only changed modules recompile)
+- Closer to original build process
+- Better for understanding module boundaries
+
+### Disadvantages
+
+- More complex build script
+- Requires PUBLIC/EXTERN directives to work correctly
+- DATA segment handling is awkward with z88dk
+
+### DATA Segment Handling
+
+The original build places DATA at a specific address using the linker's `/p:` directive. The modular build handles this by producing separate binaries that would need to be combined or loaded separately.
+
+### ORG Directive Conflicts
+
+Some modules contain their own ORG directives (e.g., DIST.Z80 has `ORG 100H` and `ORG 1F0H`). These may conflict with the modular approach where the linker controls placement.
+
+## Build Script
+
+The following script implements this modular build approach:
+
+```bash
 #!/usr/bin/env bash
 
-# z88dk build script for BBC BASIC Z80
+# z88dk modular build script for BBC BASIC Z80
 # Usage:
-#   ./build-z88dk.sh             # Build CP/M version (default)
-#   ./build-z88dk.sh cpm         # Build CP/M version
-#   ./build-z88dk.sh acorn       # Build Acorn tube version
+#   ./build-modular.sh             # Build CP/M version (default)
+#   ./build-modular.sh cpm         # Build CP/M version
+#   ./build-modular.sh acorn       # Build Acorn tube version
 #
 # Requires: z88dk with z88dk-z80asm
 #
-# Note: Source files need directive translation before first use:
-#   GLOBAL -> PUBLIC
-#   EXTRN  -> EXTERN
-#   TITLE  -> ; TITLE (commented)
-#   ASEG   -> removed or use SECTION
-#
-# See translate-directives.sh for automated conversion.
+# Note: Source files need directive translation before first use.
+# See convert-source.sh for automated conversion.
 
 set -e  # Exit on error
 
@@ -99,3 +134,4 @@ echo "  Binary: $OUTPUT_DIR/$OUTPUT_NAME.bin (code at $CODE_ORG)"
 echo "  Data:   $OUTPUT_DIR/data.bin (at $DATA_ORG)"
 echo "  Hex:    $OUTPUT_DIR/$OUTPUT_NAME.hex"
 echo "  Intel:  $OUTPUT_DIR/$OUTPUT_NAME.ihx"
+```

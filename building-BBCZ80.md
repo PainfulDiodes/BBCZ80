@@ -1,10 +1,10 @@
 # Building BBC BASIC Z80 with z88dk
 
-This document explains the process of adapting the RTR BBC BASIC Z80 source code to build with z88dk's assembler (z88dk-z80asm) instead of the original CP/M toolchain.
+This document explains the process of adapting R.T. Russell's BBC BASIC Z80 source code to build with z88dk's assembler (z88dk-z80asm) instead of the original CP/M toolchain.
 
 ## Background
 
-BBC BASIC Z80 by R.T. Russell was originally developed for CP/M systems and uses the CP/M assembler toolchain. The source files use directives and conventions specific to that environment. To build on modern systems, we need to translate these to z88dk-compatible syntax.
+The original source files use directives and conventions specific to the CP/M assembler toolchain. To cross-compile on Linux or macOS, we need to translate these to z88dk-compatible syntax.
 
 ### Original Build Process
 
@@ -28,19 +28,19 @@ Key characteristics:
 
 The codebase consists of 11 modules totalling approximately 210KB of source:
 
-| Module | Purpose | Size |
-|--------|---------|------|
-| DIST.Z80 | Entry point, CP/M interface, jump table | 3.9KB |
-| MAIN.Z80 | Main interpreter loop, commands | 31KB |
-| EXEC.Z80 | Statement execution engine | 45KB |
-| EVAL.Z80 | Expression evaluation | 36KB |
-| MATH.Z80 | Floating-point and maths functions | 32KB |
-| ASMB.Z80 | Inline assembler | 11KB |
-| CMOS.Z80 | CP/M OS interface | 22KB |
-| HOOK.Z80 | Stub functions for unsupported features | 0.6KB |
-| ACORN.Z80 | Acorn tube interface (alternative to HOOK) | 9KB |
-| AMOS.Z80 | Acorn MOS interface (alternative to CMOS) | 16KB |
-| DATA.Z80 | RAM variables and buffers | 1.6KB |
+| Module    | Purpose                                    | Size  |
+|-----------|--------------------------------------------|-------|
+| DIST.Z80  | Entry point, CP/M interface, jump table    | 3.9KB |
+| MAIN.Z80  | Main interpreter loop, commands            | 31KB  |
+| EXEC.Z80  | Statement execution engine                 | 45KB  |
+| EVAL.Z80  | Expression evaluation                      | 36KB  |
+| MATH.Z80  | Floating-point and maths functions         | 32KB  |
+| ASMB.Z80  | Inline assembler                           | 11KB  |
+| CMOS.Z80  | CP/M OS interface                          | 22KB  |
+| HOOK.Z80  | Stub functions for unsupported features    | 0.6KB |
+| ACORN.Z80 | Acorn tube interface (alternative to HOOK) | 9KB   |
+| AMOS.Z80  | Acorn MOS interface (alternative to CMOS)  | 16KB  |
+| DATA.Z80  | RAM variables and buffers                  | 1.6KB |
 
 Two build targets exist:
 - **CP/M**: DIST + MAIN + EXEC + EVAL + ASMB + MATH + HOOK + CMOS + DATA
@@ -50,72 +50,38 @@ Two build targets exist:
 
 The CP/M assembler uses different directive names than z88dk:
 
-| CP/M Directive | z88dk Equivalent | Purpose |
-|----------------|------------------|---------|
-| `GLOBAL` | `PUBLIC` | Export symbol from module |
-| `EXTRN` | `EXTERN` | Import symbol from another module |
-| `TITLE` | N/A (comment out) | Module title for listings |
-| `ASEG` | N/A (remove) | Absolute segment declaration |
+| CP/M Directive | z88dk Equivalent  | Purpose                           |
+|----------------|-------------------|-----------------------------------|
+| `GLOBAL`       | `PUBLIC`          | Export symbol from module         |
+| `EXTRN`        | `EXTERN`          | Import symbol from another module |
+| `TITLE`        | N/A (comment out) | Module title for listings         |
+| `ASEG`         | N/A (remove)      | Absolute segment declaration      |
 
-The `translate-directives.sh` script automates this conversion:
+The `convert-source.sh` script automates this conversion:
 
 ```bash
-./translate-directives.sh
+./convert-source.sh
 ```
 
 This creates backups in `repo/src-backup/` before modifying files in place.
 
-## Build Approaches
+## Build Approach
 
-Two approaches are provided, each with different tradeoffs.
-
-### Option A: Modular Build (build-z88dk.sh)
-
-This approach preserves the original modular structure:
+The build uses an include-based approach following the pattern used by the Marvin monitor:
 
 ```bash
-./build-z88dk.sh cpm      # or acorn
+./build.sh cpm
 ```
 
 **Process:**
-1. Assemble each module separately to object files
-2. Link object files together
-3. Handle DATA segment placement separately
 
-**Advantages:**
-- Preserves original code structure
-- Faster incremental rebuilds (only changed modules recompile)
-- Closer to original build process
-- Better for understanding module boundaries
-
-**Disadvantages:**
-- More complex build script
-- Requires PUBLIC/EXTERN directives to work correctly
-- DATA segment handling is awkward with z88dk
-
-### Option B: Include-Based Build (build-z88dk-simple.sh)
-
-This approach follows the pattern used by the Marvin monitor:
-
-```bash
-./build-z88dk-simple.sh cpm
-```
-
-**Process:**
 1. Wrapper file (cpm.asm or acorn.asm) includes all modules in order
 2. Single-pass assembly produces complete binary
 3. DATA segment placed via inline ORG directive
 
-**Advantages:**
-- Simpler build script
-- No need for PUBLIC/EXTERN (all symbols globally visible)
-- Easier to debug (single assembly pass)
-- Proven pattern from Marvin project
+This approach is simpler than the original linker-based build, with no need for PUBLIC/EXTERN directives since all symbols are globally visible. It's easier to debug with a single assembly pass.
 
-**Disadvantages:**
-- Slower builds (always rebuilds everything)
-- Loses module boundary information
-- Large single compilation unit (~210KB source)
+For an alternative modular build approach that mirrors the original CP/M linker-based process, see [alternative-build-approach.md](alternative-build-approach.md).
 
 ## Memory Layout
 
@@ -137,21 +103,6 @@ The DATA segment must start on a page boundary because ACCS (string accumulator)
 0x4C00 - 0x4DFF   DATA segment
 ```
 
-## Comparison with Marvin Build
-
-| Aspect | Marvin | BBC BASIC Z80 |
-|--------|--------|---------------|
-| Total source size | ~50KB | ~210KB |
-| Number of modules | 12 | 11 |
-| Largest module | ~10KB | 45KB (EXEC) |
-| Build method | Include-based | Originally linker-based |
-| Entry point ORG | 0x0000 | 0x0100 |
-| Separate data segment | No | Yes (0x4B00/0x4C00) |
-| Conditional compilation | BEANBOARD flag | CPM_TARGET/ACORN_TARGET |
-| Cross-module references | None (all visible) | Extensive (GLOBAL/EXTRN) |
-
-Marvin's simpler structure (smaller modules, no separate data segment) makes the include-based approach natural. BBC BASIC's larger, more complex structure with explicit module boundaries was designed for a linker-based toolchain.
-
 ## Known Issues and Considerations
 
 ### DATA Segment Placement
@@ -161,11 +112,9 @@ The original build places DATA at a specific address using the linker's `/p:` di
 - Creates a gap in the binary if code doesn't reach 0x4B00
 - May need adjustment if code size changes significantly
 
-The modular build handles this by producing separate binaries that would need to be combined or loaded separately.
-
 ### ORG Directives in Modules
 
-Some modules contain their own ORG directives (e.g., DIST.Z80 has `ORG 100H` and `ORG 1F0H`). These work correctly in the include-based approach but may conflict with the modular approach where the linker controls placement.
+Some modules contain their own ORG directives (e.g., DIST.Z80 has `ORG 100H` and `ORG 1F0H`). These work correctly in the include-based approach.
 
 ### END Directives
 
@@ -186,7 +135,6 @@ After building, verify the output:
 
 ## Future Improvements
 
-- Add sjasmplus build script (alternative assembler)
 - Create proper makefile with dependency tracking
 - Add size comparison reporting
 - Automate testing against reference binaries
