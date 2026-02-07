@@ -4,8 +4,8 @@
 ; This file includes all modules in the correct order for CP/M target.
 ; Module order matches original MAKE.SUB link order.
 ;
-; Before using: run translate-directives.sh to convert GLOBAL/EXTRN
-; or manually remove them (not needed with include approach).
+; Before using: run convert-source.sh to create asm/ directory
+; with converted source files.
 
 IFDEF BASIC_ORG
     ORG BASIC_ORG
@@ -20,16 +20,15 @@ ACORN_TARGET EQU 0
 ; Include modules in link order from original MAKE.SUB:
 ; link bbcbasic=dist,main,exec,eval,asmb,math,hook,cmos,/p:4B00,data
 
-include "repo/src/DIST.Z80"
-include "repo/src/MAIN.Z80"
-include "repo/src/EXEC.Z80"
-include "repo/src/EVAL.Z80"
-include "repo/src/ASMB.Z80"
-include "repo/src/MATH.Z80"
-include "repo/src/HOOK.Z80"
-include "repo/src/CMOS.Z80"
+include "asm/DIST.asm"
+include "asm/MAIN.asm"
+include "asm/EXEC.asm"
+include "asm/EVAL.asm"
+include "asm/ASMB.asm"
+include "asm/MATH.asm"
+include "asm/HOOK.asm"
+include "asm/CMOS.asm"
 
 ; DATA module at separate address (0x4B00 in original)
-; Note: May need ORG directive adjustment or SECTION for z88dk
 ORG 0x4B00
-include "repo/src/DATA.Z80"
+include "asm/DATA.asm"

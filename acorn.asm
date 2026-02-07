@@ -4,8 +4,8 @@
 ; This file includes all modules in the correct order for Acorn target.
 ; Module order matches original MAKE.SUB link order.
 ;
-; Before using: run translate-directives.sh to convert GLOBAL/EXTRN
-; or manually remove them (not needed with include approach).
+; Before using: run convert-source.sh to create asm/ directory
+; with converted source files.
 
 IFDEF BASIC_ORG
     ORG BASIC_ORG
@@ -23,14 +23,14 @@ ACORN_TARGET EQU 1
 ; Note: Acorn build doesn't include DIST (has different entry),
 ; and uses ACORN+AMOS instead of HOOK+CMOS
 
-include "repo/src/MAIN.Z80"
-include "repo/src/EXEC.Z80"
-include "repo/src/EVAL.Z80"
-include "repo/src/ASMB.Z80"
-include "repo/src/MATH.Z80"
-include "repo/src/ACORN.Z80"
-include "repo/src/AMOS.Z80"
+include "asm/MAIN.asm"
+include "asm/EXEC.asm"
+include "asm/EVAL.asm"
+include "asm/ASMB.asm"
+include "asm/MATH.asm"
+include "asm/ACORN.asm"
+include "asm/AMOS.asm"
 
 ; DATA module at separate address (0x4C00 in original)
 ORG 0x4C00
-include "repo/src/DATA.Z80"
+include "asm/DATA.asm"
