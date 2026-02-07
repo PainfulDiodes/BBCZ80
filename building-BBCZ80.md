@@ -65,38 +65,38 @@ The `convert-source.sh` script automates these conversions:
 
 This copies files from `src/` to `asm/`, renaming from `.Z80` to `.asm` and applying:
 
-- Directive translations (GLOBAL, EXTRN, TITLE, ASEG)
-- Comment out ORG and END directives
+- Directive translations (GLOBAL→PUBLIC, EXTRN→EXTERN)
+- Comment out ORG and END directives (linker controls placement)
 - Convert string quotes (single to double for DEFM)
-- Convert character expressions (`'X' AND 1FH` to numeric)
+- Convert character expressions (`'X' AND 1FH` to numeric values)
+- Add `INCLUDE "constants.inc"` to each module
 - Comment out duplicate EQU definitions (centralised in `constants.inc`)
-- Comment out size-check conditionals (IF $ GT)
+- Handle special cases (DIST.Z80 ORG 1F0H → DEFS padding)
 
 The original source files are preserved unchanged.
 
-## Build Approach
+## Build Process
 
-The build uses an include-based approach following the pattern used by the Marvin monitor:
+The build mirrors the original CP/M linker-based approach, assembling each module separately and linking them together:
 
 ```bash
-./build.sh cpm
+./convert-source.sh   # Convert source files (run once)
+./build.sh cpm        # Build CP/M version
+./build.sh acorn      # Build Acorn version
 ```
 
 **Process:**
 
-1. Wrapper file (cpm.asm or acorn.asm) includes all modules in order
-2. Single-pass assembly produces complete binary
-3. DATA segment placed via inline ORG directive
-
-This approach is simpler than the original linker-based build, with no need for PUBLIC/EXTERN directives since all symbols are globally visible. It's easier to debug with a single assembly pass.
-
-For an alternative modular build approach that mirrors the original CP/M linker-based process, see [alternative-build-approach.md](alternative-build-approach.md).
+1. Each module assembled separately to `.o` object files
+2. Linker combines all object files
+3. Cross-module references resolved via PUBLIC/EXTERN declarations
+4. Output binary at CODE_ORG (0x0100)
 
 ## Memory Layout
 
 ### CP/M Target
 
-```
+```text
 0x0000 - 0x00FF   CP/M zero page (system use)
 0x0100 - 0x4AFF   BBC BASIC code (DIST through CMOS)
 0x4B00 - 0x4CFF   DATA segment (variables, buffers)
@@ -107,33 +107,10 @@ The DATA segment must start on a page boundary because ACCS (string accumulator)
 
 ### Acorn Target
 
-```
+```text
 0x0100 - 0x4BFF   BBC BASIC code (MAIN through AMOS)
 0x4C00 - 0x4DFF   DATA segment
 ```
-
-## Known Issues and Limitations
-
-### Namespace Collisions
-
-The include-based approach combines all modules into a single namespace. The original codebase was designed for modular compilation where each module had its own namespace. This causes:
-
-- **Duplicate labels**: Labels like `COLD`, `ERROR0`-`ERROR4`, `CLS`, `CMDTAB` are defined in multiple modules with different implementations
-- **Duplicate EQU constants**: Handled by `constants.inc`, but some constants conflict with labels (e.g., `BDOS`, `DEL`, `TOOBIG`)
-
-These require manual renaming in the source files to resolve.
-
-### Remaining Manual Fixes
-
-After running `convert-source.sh`, the following issues remain:
-
-1. **Duplicate code labels** - Rename conflicting labels across modules
-2. **Quote escaping** - Strings containing quote characters (e.g., `Can't match`)
-3. **Character expressions** - Some `'X' AND mask` patterns not yet converted
-
-### DATA Segment Placement
-
-The original build places DATA at a specific address using the linker's `/p:` directive. In the include-based approach, we use an inline `ORG 0x4B00` directive. This creates a gap in the binary if code doesn't reach that address.
 
 ## Testing the Build
 
@@ -141,22 +118,36 @@ After building, verify the output:
 
 1. Check binary size matches expectations (~18-20KB for code)
 2. Verify entry point at 0x0100 using hexdump
-3. Compare with original pre-built binaries in `repo/bin/` directory
+3. Compare with original pre-built binaries in `bin/` directory
 4. Test on emulator (e.g., RunCPM, MAME CP/M)
 
 ## Current Status
 
-The automated conversion handles most directive translations, but the build does not yet complete due to namespace collisions. Approximately 200 errors remain, primarily duplicate label definitions.
+The modular build is working. Each module compiles separately, preserving namespace isolation.
 
-Options to proceed:
+```bash
+./convert-source.sh   # Convert source files
+./build.sh cpm        # Build CP/M version (19568 bytes)
+./build.sh acorn      # Build Acorn version (19740 bytes)
+```
 
-1. **Manual label renaming** - Rename duplicate labels in source files (significant effort)
-2. **Modular build** - Use the linker-based approach in [alternative-build-approach.md](alternative-build-approach.md)
-3. **Different assembler** - Some assemblers support module namespaces
+Note: The DATA segment currently follows code directly instead of being placed at a fixed address (0x4B00 for CP/M, 0x4C00 for Acorn). This results in slightly larger binaries than the reference versions.
 
 ## Future Improvements
 
-- Resolve remaining namespace collisions
+- Implement proper DATA segment placement using z88dk sections
 - Add size comparison reporting
 - Automate testing against reference binaries
 - Consider creating a BeanZee target configuration
+
+---
+
+## Notes
+
+### Why Not a Monolithic Build?
+
+An include-based approach was initially attempted, where a wrapper file would include all modules in order for single-pass assembly. This failed because the original codebase was designed for modular compilation where each module has its own namespace.
+
+Combining all modules into a single namespace caused approximately 200 duplicate label errors. Labels like `COLD`, `ERROR0`-`ERROR4`, `CLS`, and `CMDTAB` are defined in multiple modules with different implementations. Constants like `BDOS`, `DEL`, and `ESC` also conflicted with labels of the same name in other modules.
+
+Resolving these conflicts would require extensive manual renaming throughout the source files. The modular build approach avoids this by preserving the original namespace isolation.

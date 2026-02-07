@@ -4,12 +4,12 @@
 # Usage: ./convert-source.sh
 #
 # Copies .Z80 files from src/ to asm/ with .asm extension, converting:
-#   GLOBAL -> PUBLIC
-#   EXTRN  -> EXTERN
+#   GLOBAL -> PUBLIC (for modular linking)
+#   EXTRN  -> EXTERN (for modular linking)
 #   TITLE  -> ; TITLE (commented out)
 #   ASEG   -> ; ASEG (commented out)
-#   ORG    -> ; ORG (commented out, wrapper controls origin)
-#   END    -> ; END (commented out, not needed with includes)
+#   ORG    -> ; ORG (commented out, linker controls origin)
+#   END    -> ; END (commented out, not needed)
 #   DEFM 'text' -> DEFM "text" (z88dk string syntax)
 #   IF $ GT -> ; IF $ GT (commented out, size checks)
 #   ERROR  -> ; ERROR (commented out, assembler messages)
@@ -36,7 +36,7 @@ cat > "$ASM_DIR/constants.inc" << 'CONSTANTS'
 ; ASCII control characters
 LF      EQU     0AH
 CR      EQU     0DH
-ESC     EQU     1BH
+; Note: ESC conflicts with label in AMOS.Z80, not included
 BEL     EQU     7
 BS      EQU     8
 HT      EQU     9
@@ -119,10 +119,8 @@ for file in "$SRC_DIR"/*.Z80; do
     temp_file=$(mktemp)
 
     sed \
-        -e 's/^\([[:space:]]*\)GLOBAL[[:space:]]/\1; PUBLIC /g' \
-        -e 's/^\([[:space:]]*\)EXTRN[[:space:]]/\1; EXTERN /g' \
-        -e 's/^\([[:space:]]*\)PUBLIC[[:space:]]/\1; PUBLIC /g' \
-        -e 's/^\([[:space:]]*\)EXTERN[[:space:]]/\1; EXTERN /g' \
+        -e 's/^\([[:space:]]*\)GLOBAL[[:space:]]/\1PUBLIC /g' \
+        -e 's/^\([[:space:]]*\)EXTRN[[:space:]]/\1EXTERN /g' \
         -e 's/^\([[:space:]]*\)TITLE[[:space:]]/\1; TITLE /g' \
         -e 's/^\([[:space:]]*\)ASEG$/\1; ASEG/g' \
         -e 's/^\([[:space:]]*\)ORG[[:space:]]/\1; ORG /g' \
@@ -132,7 +130,11 @@ for file in "$SRC_DIR"/*.Z80; do
         -e 's/^\([[:space:]]*\)ENDIF$/\1; ENDIF/g' \
         -e 's/^\([^:]*:\)[[:space:]]*END$/\1 ; END/g' \
         -e 's/^\([[:space:]]*\)END[[:space:]]/\1; END /g' \
+        -e "s/DEFM[[:space:]]*'\"'/DEFB 22H\t; double-quote char/g" \
+        -e "s/''''/27H/g" \
+        -e "s/''/@@APOS@@/g" \
         -e "s/DEFM[[:space:]]*'\([^']*\)'/DEFM \"\1\"/g" \
+        -e "s/@@APOS@@/'/g" \
         -e "s/DEFB[[:space:]]*'\([^']*\)\$'/DEFB \"\1\$\"/g" \
         -e "s/'G' AND 1FH/07H/g" \
         -e "s/'O' AND 1FH/0FH/g" \
@@ -144,9 +146,14 @@ for file in "$SRC_DIR"/*.Z80; do
         -e "s/'L' AND 1FH/0CH/g" \
         -e "s/'R' AND 1FH/12H/g" \
         -e "s/'Q' AND 1FH/11H/g" \
+        -e "s/'S' AND 1FH/13H/g" \
+        -e "s/'P' AND 1FH/10H/g" \
+        -e "s/'+' AND 0FH/0BH/g" \
+        -e "s/'\*' AND 0FH/0AH/g" \
+        -e "s/'\\\\'/5CH/g" \
+        -e "s/TDEF AND 7FH/5DH/g" \
         -e 's/^LF[[:space:]]*EQU/; LF EQU/' \
         -e 's/^CR[[:space:]]*EQU/; CR EQU/' \
-        -e 's/^ESC[[:space:]]*EQU/; ESC EQU/' \
         -e 's/^BEL[[:space:]]*EQU/; BEL EQU/' \
         -e 's/^BS[[:space:]]*EQU/; BS EQU/' \
         -e 's/^HT[[:space:]]*EQU/; HT EQU/' \
@@ -208,16 +215,32 @@ for file in "$SRC_DIR"/*.Z80; do
         "$ASM_DIR/$filename.asm" > "$temp_file"
 
     mv "$temp_file" "$ASM_DIR/$filename.asm"
+
+    # Add constants.inc include at the top of each file (after TITLE comment)
+    temp_file=$(mktemp)
+    awk 'NR==1 { print; print "\tINCLUDE \"constants.inc\""; next } { print }' \
+        "$ASM_DIR/$filename.asm" > "$temp_file"
+    mv "$temp_file" "$ASM_DIR/$filename.asm"
 done
+
+# Post-conversion fix for DIST.asm
+# Replace ORG 1F0H with DEFS padding to reach offset 0xF0 within module
+# (DIST module linked at 0x100, so offset 0xF0 = address 0x1F0)
+if [ -f "$ASM_DIR/DIST.asm" ]; then
+    echo "Applying DIST.asm modular build fix..."
+    sed -i.bak \
+        -e 's/^[[:space:]]*; ORG 1F0H$/\tDEFS 0F0H - $, 0\t; Pad to offset 0xF0 (address 0x1F0 when linked at 0x100)/' \
+        "$ASM_DIR/DIST.asm"
+    rm -f "$ASM_DIR/DIST.asm.bak"
+fi
 
 echo ""
 echo "Translation complete."
 echo "Converted files saved to: $ASM_DIR/"
 echo "Shared constants saved to: $ASM_DIR/constants.inc"
 echo ""
-echo "Manual fixes still required:"
-echo "  - Duplicate code labels (COLD, ERROR0-4, CLS, CMDTAB, etc.)"
-echo "  - Quote escaping in strings containing quotes"
-echo "  - Remaining character expressions"
+echo "Notes:"
+echo "  - PUBLIC/EXTERN directives enabled for modular linking"
+echo "  - DIST.asm ORG 1F0H converted to DEFS padding"
 echo ""
 echo "See building-BBCZ80.md for details."

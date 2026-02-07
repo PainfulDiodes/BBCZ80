@@ -4,7 +4,7 @@
 ; ASCII control characters
 LF      EQU     0AH
 CR      EQU     0DH
-ESC     EQU     1BH
+; Note: ESC conflicts with label in AMOS.Z80, not included
 BEL     EQU     7
 BS      EQU     8
 HT      EQU     9
