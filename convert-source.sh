@@ -20,16 +20,16 @@
 set -e
 
 SRC_DIR="src"
-ASM_DIR="build"
+BUILD_DIR="build"
 
 echo "Translating CP/M directives to z88dk syntax"
 echo "============================================"
 
 # Create build directory for converted files
-mkdir -p "$ASM_DIR"
+mkdir -p "$BUILD_DIR"
 
 # Create shared constants file
-cat > "$ASM_DIR/constants.inc" << 'CONSTANTS'
+cat > "$BUILD_DIR/constants.inc" << 'CONSTANTS'
 ; BBC BASIC Z80 - Shared Constants
 ; Extracted from source modules to avoid duplicate definitions
 
@@ -111,8 +111,8 @@ for file in "$SRC_DIR"/*.Z80; do
     filename=$(basename "$file" .Z80)
     echo "Processing $filename..."
 
-    # Copy original to asm directory with .asm extension
-    cp "$file" "$ASM_DIR/$filename.asm"
+    # Copy original to build directory with .asm extension
+    cp "$file" "$BUILD_DIR/$filename.asm"
 
     # Apply transformations to asm file
     # Note: Using temp file for portability (BSD sed vs GNU sed)
@@ -212,31 +212,31 @@ for file in "$SRC_DIR"/*.Z80; do
         -e 's/^LOGRNG[[:space:]]*EQU/; LOGRNG EQU/' \
         -e 's/^ACLOST[[:space:]]*EQU/; ACLOST EQU/' \
         -e 's/^EXPRNG[[:space:]]*EQU/; EXPRNG EQU/' \
-        "$ASM_DIR/$filename.asm" > "$temp_file"
+        "$BUILD_DIR/$filename.asm" > "$temp_file"
 
-    mv "$temp_file" "$ASM_DIR/$filename.asm"
+    mv "$temp_file" "$BUILD_DIR/$filename.asm"
 
     # Add constants.inc include at the top of each file (after TITLE comment)
     temp_file=$(mktemp)
     awk 'NR==1 { print; print "\tINCLUDE \"constants.inc\""; next } { print }' \
-        "$ASM_DIR/$filename.asm" > "$temp_file"
-    mv "$temp_file" "$ASM_DIR/$filename.asm"
+        "$BUILD_DIR/$filename.asm" > "$temp_file"
+    mv "$temp_file" "$BUILD_DIR/$filename.asm"
 done
 
 # Post-conversion fix for DIST.asm
 # Replace ORG 1F0H with DEFS padding to reach offset 0xF0 within module
 # (DIST module linked at 0x100, so offset 0xF0 = address 0x1F0)
-if [ -f "$ASM_DIR/DIST.asm" ]; then
+if [ -f "$BUILD_DIR/DIST.asm" ]; then
     echo "Applying DIST.asm modular build fix..."
     sed -i.bak \
         -e 's/^[[:space:]]*; ORG 1F0H$/\tDEFS 0F0H - $, 0\t; Pad to offset 0xF0 (address 0x1F0 when linked at 0x100)/' \
-        "$ASM_DIR/DIST.asm"
-    rm -f "$ASM_DIR/DIST.asm.bak"
+        "$BUILD_DIR/DIST.asm"
+    rm -f "$BUILD_DIR/DIST.asm.bak"
 fi
 
 echo ""
 echo "Translation complete."
-echo "Converted files saved to: $ASM_DIR/"
-echo "Shared constants saved to: $ASM_DIR/constants.inc"
+echo "Converted files saved to: $BUILD_DIR/"
+echo "Shared constants saved to: $BUILD_DIR/constants.inc"
 echo ""
 echo "To build: build/build.sh [cpm|acorn]"
