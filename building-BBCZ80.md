@@ -57,10 +57,10 @@ The CP/M assembler uses different directive names than z88dk:
 | `TITLE`        | N/A (comment out) | Module title for listings         |
 | `ASEG`         | N/A (remove)      | Absolute segment declaration      |
 
-The `convert-source.sh` script automates these conversions:
+The `convert.sh` script automates these conversions:
 
 ```bash
-./convert-source.sh
+./convert.sh
 ```
 
 This copies files from `src/` to `build/`, renaming from `.Z80` to `.asm` and applying:
@@ -80,14 +80,14 @@ The original source files are preserved unchanged.
 The build mirrors the original CP/M linker-based approach, assembling each module separately and linking them together. All converted source and build artifacts are placed in `build/`:
 
 ```bash
-./convert-source.sh       # Convert source files to build/ (run once)
+./convert.sh       # Convert source files to build/ (run once)
 build/build.sh cpm        # Build CP/M version
 build/build.sh acorn      # Build Acorn version
 ```
 
 **Process:**
 
-1. `convert-source.sh` copies and converts `src/*.Z80` to `build/*.asm`
+1. `convert.sh` copies and converts `src/*.Z80` to `build/*.asm`
 2. Each module assembled separately to `build/*.o` object files
 3. Linker combines all object files
 4. Cross-module references resolved via PUBLIC/EXTERN declarations
@@ -126,7 +126,7 @@ After building, verify the output:
 The modular build is working. Each module compiles separately, preserving namespace isolation.
 
 ```bash
-./convert-source.sh       # Convert source files
+./convert.sh       # Convert source files
 build/build.sh cpm        # Build CP/M version (19568 bytes)
 build/build.sh acorn      # Build Acorn version (19740 bytes)
 ```

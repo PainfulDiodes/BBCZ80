@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Translate CP/M assembler directives to z88dk syntax
-# Usage: ./convert-source.sh
+# Usage: ./convert.sh
 #
 # Copies .Z80 files from src/ to build/ with .asm extension, converting:
 #   GLOBAL -> PUBLIC (for modular linking)

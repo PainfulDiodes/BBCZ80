@@ -2,7 +2,7 @@
 
 # Remove all generated files from build/ (converted source and build artifacts)
 # Preserves tracked scripts (build.sh, clean.sh)
-# Usage: ./clean-converted.sh
+# Usage: ./clean.sh
 
 set -e
 

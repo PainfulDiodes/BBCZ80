@@ -11,7 +11,7 @@
 # This script builds each module separately to object files, then links them.
 # This mirrors the original CP/M build process and avoids namespace collisions.
 #
-# Before first use, run: ./convert-source.sh
+# Before first use, run: ./convert.sh
 
 set -e  # Exit on error
 
@@ -48,7 +48,7 @@ echo "================================================="
 # Check converted source files exist
 if [ ! -f "$BUILD_DIR/constants.inc" ]; then
     echo "Error: Converted source files not found in $BUILD_DIR/"
-    echo "Run ./convert-source.sh first to convert source files."
+    echo "Run ./convert.sh first to convert source files."
     exit 1
 fi
 
