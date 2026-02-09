@@ -87,9 +87,13 @@ z88dk-z80asm -b -m \
 # Report size
 BIN_SIZE=$(wc -c < "$OUTPUT_NAME.bin" | tr -d ' ')
 
+# Create hex dump of build binary
+xxd "$OUTPUT_NAME.bin" > "$OUTPUT_NAME.hex"
+
 echo ""
 echo "Build complete:"
 echo "  Binary: $OUTPUT_NAME.bin ($BIN_SIZE bytes at $CODE_ORG)"
+echo "  Hex:    $OUTPUT_NAME.hex"
 echo ""
 echo "Note: DATA segment follows code; not at fixed address $DATA_ORG"
 echo "See map file: $OUTPUT_NAME.map"

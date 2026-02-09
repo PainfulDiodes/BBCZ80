@@ -96,5 +96,16 @@ fi
 echo ""
 echo "Translation complete."
 echo "Converted files saved to: $BUILD_DIR/"
+
+# Create hex dumps of reference binaries
+echo ""
+echo "Creating hex dumps of reference binaries..."
+for target_dir in bin/cpm bin/acorn; do
+    if [ -f "$target_dir/BBCBASIC.COM" ]; then
+        xxd "$target_dir/BBCBASIC.COM" > "$target_dir/BBCBASIC.hex"
+        echo "  $target_dir/BBCBASIC.COM -> $target_dir/BBCBASIC.hex"
+    fi
+done
+
 echo ""
 echo "To build: build/build.sh [cpm|acorn]"
