@@ -93,6 +93,20 @@ if [ -f "$BUILD_DIR/DIST.asm" ]; then
     rm -f "$BUILD_DIR/DIST.asm.bak"
 fi
 
+# Post-conversion fix for DATA.asm
+# Add SECTION and ORG directives so the linker places DATA at a fixed address
+# DATA_ORG is defined via -D flag at assembly time (0x4B00 for CPM, 0x4C00 for Acorn)
+if [ -f "$BUILD_DIR/DATA.asm" ]; then
+    echo "Applying DATA.asm section placement fix..."
+    temp_file=$(mktemp)
+    {
+        echo "    SECTION data"
+        echo "    ORG DATA_ORG"
+        cat "$BUILD_DIR/DATA.asm"
+    } > "$temp_file"
+    mv "$temp_file" "$BUILD_DIR/DATA.asm"
+fi
+
 echo ""
 echo "Translation complete."
 echo "Converted files saved to: $BUILD_DIR/"

@@ -63,8 +63,12 @@ for module in $MODULES; do
         echo "Error: $module.asm not found"
         exit 1
     fi
+    EXTRA_FLAGS=""
+    if [ "$module" = "DATA" ]; then
+        EXTRA_FLAGS="-DDATA_ORG=$DATA_ORG"
+    fi
     echo "  $module.asm -> $module.o"
-    z88dk-z80asm -l -m -o"$module.o" "$module.asm"
+    z88dk-z80asm -l -m $EXTRA_FLAGS -o"$module.o" "$module.asm"
 done
 
 # Build object file list for linking
@@ -84,8 +88,20 @@ z88dk-z80asm -b -m \
     -r$CODE_ORG \
     $ALL_OBJS
 
-# Report size
+# Remove the DATA section binary (not needed in output)
+rm -f "${OUTPUT_NAME}_data.bin"
+
+# Pad code binary to match reference size
+# Reference binary spans from CODE_ORG to DATA_ORG (exclusive)
+EXPECTED_SIZE=$(( DATA_ORG - CODE_ORG ))
 BIN_SIZE=$(wc -c < "$OUTPUT_NAME.bin" | tr -d ' ')
+
+if [ "$BIN_SIZE" -lt "$EXPECTED_SIZE" ]; then
+    PAD_SIZE=$(( EXPECTED_SIZE - BIN_SIZE ))
+    dd if=/dev/zero bs=1 count=$PAD_SIZE >> "$OUTPUT_NAME.bin" 2>/dev/null
+    echo "  Padded $PAD_SIZE bytes to reach $DATA_ORG"
+    BIN_SIZE=$(wc -c < "$OUTPUT_NAME.bin" | tr -d ' ')
+fi
 
 # Create hex dump of build binary
 xxd "$OUTPUT_NAME.bin" > "$OUTPUT_NAME.hex"
@@ -94,14 +110,23 @@ echo ""
 echo "Build complete:"
 echo "  Binary: $OUTPUT_NAME.bin ($BIN_SIZE bytes at $CODE_ORG)"
 echo "  Hex:    $OUTPUT_NAME.hex"
-echo ""
-echo "Note: DATA segment follows code; not at fixed address $DATA_ORG"
-echo "See map file: $OUTPUT_NAME.map"
+echo "  Map:    $OUTPUT_NAME.map"
 
-# Compare with reference if available
+# Compare with reference binary
 REF_BIN="../bin/$TARGET/BBCBASIC.COM"
 if [ -f "$REF_BIN" ]; then
     REF_SIZE=$(wc -c < "$REF_BIN" | tr -d ' ')
     echo ""
     echo "Reference binary: $REF_SIZE bytes"
+    if [ "$BIN_SIZE" -eq "$REF_SIZE" ]; then
+        echo "  Size: MATCH"
+        if cmp -s "$OUTPUT_NAME.bin" "$REF_BIN"; then
+            echo "  Content: IDENTICAL"
+        else
+            DIFF_COUNT=$(cmp -l "$OUTPUT_NAME.bin" "$REF_BIN" | wc -l | tr -d ' ')
+            echo "  Content: $DIFF_COUNT bytes differ"
+        fi
+    else
+        echo "  Size: MISMATCH (build=$BIN_SIZE, reference=$REF_SIZE)"
+    fi
 fi
