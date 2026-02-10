@@ -32,10 +32,14 @@ CPM_MODULES="DIST MAIN EXEC EVAL ASMB MATH HOOK CMOS DATA"
 ACORN_DIR="build/acorn"
 ACORN_MODULES="MAIN EXEC EVAL ASMB MATH ACORN AMOS DATA"
 
+BEANZEE_DIR="build/beanzee"
+BEANZEE_MODULES="MAIN EXEC EVAL ASMB MATH DATA"
+BEANZEE_SRC="src/beanzee"
+
 echo "Translating CP/M directives to z88dk syntax"
 echo "============================================"
 
-mkdir -p "$CPM_DIR" "$ACORN_DIR"
+mkdir -p "$CPM_DIR" "$ACORN_DIR" "$BEANZEE_DIR"
 
 # Convert a source file and write to target directory
 convert_module() {
@@ -113,6 +117,22 @@ for file in "$SRC_DIR"/*.Z80; do
         echo "  $filename -> $ACORN_DIR/$filename.asm"
         convert_module "$file" "$ACORN_DIR/$filename.asm"
     fi
+
+    if has_module "$filename" "$BEANZEE_MODULES"; then
+        echo "  $filename -> $BEANZEE_DIR/$filename.asm"
+        convert_module "$file" "$BEANZEE_DIR/$filename.asm"
+    fi
+done
+
+# Copy BeanZee-specific source files (already in z88dk syntax, no conversion needed)
+echo ""
+echo "Copying BeanZee-specific modules..."
+for file in "$BEANZEE_SRC"/*.Z80; do
+    if [ -f "$file" ]; then
+        filename=$(basename "$file" .Z80)
+        echo "  $filename -> $BEANZEE_DIR/$filename.asm"
+        cp "$file" "$BEANZEE_DIR/$filename.asm"
+    fi
 done
 
 # Post-conversion fix for DIST.asm (CPM only)
@@ -129,7 +149,7 @@ fi
 # Post-conversion fix for DATA.asm
 # Add SECTION and ORG directives so the linker places DATA at a fixed address
 # DATA_ORG is defined via -D flag at assembly time (0x4B00 for CPM, 0x4C00 for Acorn)
-for target_dir in "$CPM_DIR" "$ACORN_DIR"; do
+for target_dir in "$CPM_DIR" "$ACORN_DIR" "$BEANZEE_DIR"; do
     if [ -f "$target_dir/DATA.asm" ]; then
         echo "Applying $target_dir/DATA.asm section placement fix..."
         temp_file=$(mktemp)
@@ -144,7 +164,7 @@ done
 
 echo ""
 echo "Translation complete."
-echo "Converted files saved to: $CPM_DIR/ and $ACORN_DIR/"
+echo "Converted files saved to: $CPM_DIR/, $ACORN_DIR/ and $BEANZEE_DIR/"
 
 # Create hex dumps of reference binaries
 echo ""
@@ -157,5 +177,6 @@ for target_dir in bin/cpm bin/acorn; do
 done
 
 echo ""
-echo "To build: build/cpm/build.sh   (CP/M target)"
-echo "          build/acorn/build.sh (Acorn tube target)"
+echo "To build: build/cpm/build.sh     (CP/M target)"
+echo "          build/acorn/build.sh   (Acorn tube target)"
+echo "          build/beanzee/build.sh (BeanZee target)"
