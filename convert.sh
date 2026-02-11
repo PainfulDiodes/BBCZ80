@@ -3,8 +3,10 @@
 # Translate CP/M assembler directives to z88dk syntax
 # Usage: ./convert.sh
 #
-# Copies .Z80 files from src/ to per-target build directories with .asm
-# extension, converting:
+# Phase 1: Converts .Z80 files in src/ to .asm files in src/ (one-time)
+# Phase 2: Copies converted .asm files to per-target directories
+#
+# Conversions applied:
 #   GLOBAL -> PUBLIC (for modular linking)
 #   EXTRN  -> EXTERN (for modular linking)
 #   TITLE  -> ; TITLE (commented out)
@@ -19,29 +21,26 @@
 # EQU definitions are left intact - each module is assembled independently
 # so duplicate definitions across modules don't conflict.
 #
-# Original src/ files are preserved unchanged.
+# Original .Z80 files are preserved unchanged.
 
 set -e
 
 SRC_DIR="src"
 
 # Target definitions: directory and module list
-CPM_DIR="build/cpm"
+CPM_DIR="targets/cpm"
 CPM_MODULES="DIST MAIN EXEC EVAL ASMB MATH HOOK CMOS DATA"
 
-ACORN_DIR="build/acorn"
+ACORN_DIR="targets/acorn"
 ACORN_MODULES="MAIN EXEC EVAL ASMB MATH ACORN AMOS DATA"
 
-BEANZEE_DIR="build/beanzee"
+BEANZEE_DIR="targets/beanzee"
 BEANZEE_MODULES="MAIN EXEC EVAL ASMB MATH DATA"
-BEANZEE_SRC="src/beanzee"
 
-echo "Translating CP/M directives to z88dk syntax"
-echo "============================================"
+echo "Phase 1: Translating CP/M directives to z88dk syntax"
+echo "====================================================="
 
-mkdir -p "$CPM_DIR" "$ACORN_DIR" "$BEANZEE_DIR"
-
-# Convert a source file and write to target directory
+# Convert a .Z80 source file to .asm in the same directory
 convert_module() {
     local src_file="$1"
     local dest_file="$2"
@@ -92,6 +91,44 @@ convert_module() {
     mv "$temp_file" "$dest_file"
 }
 
+# Convert each .Z80 file in src/ to .asm
+for file in "$SRC_DIR"/*.Z80; do
+    filename=$(basename "$file" .Z80)
+    dest="$SRC_DIR/$filename.asm"
+    echo "  $filename.Z80 -> $filename.asm"
+    convert_module "$file" "$dest"
+done
+
+# DIST.asm fix: replace ORG 1F0H with DEFS padding
+# DIST is CPM-only so this is safe to apply in src/
+if [ -f "$SRC_DIR/DIST.asm" ]; then
+    echo "Applying DIST.asm modular build fix..."
+    temp_file=$(mktemp)
+    sed \
+        -e 's/^[[:space:]]*; ORG 1F0H$/\tDEFS 0F0H - $, 0\t; Pad to offset 0xF0 (address 0x1F0 when linked at 0x100)/' \
+        "$SRC_DIR/DIST.asm" > "$temp_file"
+    mv "$temp_file" "$SRC_DIR/DIST.asm"
+fi
+
+# DATA.asm fix: prepend SECTION and ORG directives
+# DATA_ORG is defined via -D flag at assembly time, so the same text works for all targets
+if [ -f "$SRC_DIR/DATA.asm" ]; then
+    echo "Applying DATA.asm section placement fix..."
+    temp_file=$(mktemp)
+    {
+        echo "    SECTION data"
+        echo "    ORG DATA_ORG"
+        cat "$SRC_DIR/DATA.asm"
+    } > "$temp_file"
+    mv "$temp_file" "$SRC_DIR/DATA.asm"
+fi
+
+echo ""
+echo "Phase 2: Copying converted files to targets"
+echo "============================================"
+
+mkdir -p "$CPM_DIR" "$ACORN_DIR" "$BEANZEE_DIR"
+
 # Check if a module is in a space-separated list
 has_module() {
     local module="$1"
@@ -104,67 +141,25 @@ has_module() {
     return 1
 }
 
-# Process each .Z80 file, placing it in the appropriate target directories
-for file in "$SRC_DIR"/*.Z80; do
-    filename=$(basename "$file" .Z80)
+# Copy converted .asm files to each target directory
+for file in "$SRC_DIR"/*.asm; do
+    filename=$(basename "$file" .asm)
 
     if has_module "$filename" "$CPM_MODULES"; then
-        echo "  $filename -> $CPM_DIR/$filename.asm"
-        convert_module "$file" "$CPM_DIR/$filename.asm"
+        echo "  $filename.asm -> $CPM_DIR/"
+        cp "$file" "$CPM_DIR/$filename.asm"
     fi
 
     if has_module "$filename" "$ACORN_MODULES"; then
-        echo "  $filename -> $ACORN_DIR/$filename.asm"
-        convert_module "$file" "$ACORN_DIR/$filename.asm"
+        echo "  $filename.asm -> $ACORN_DIR/"
+        cp "$file" "$ACORN_DIR/$filename.asm"
     fi
 
     if has_module "$filename" "$BEANZEE_MODULES"; then
-        echo "  $filename -> $BEANZEE_DIR/$filename.asm"
-        convert_module "$file" "$BEANZEE_DIR/$filename.asm"
-    fi
-done
-
-# Copy BeanZee-specific source files (already in z88dk syntax, no conversion needed)
-echo ""
-echo "Copying BeanZee-specific modules..."
-for file in "$BEANZEE_SRC"/*.Z80; do
-    if [ -f "$file" ]; then
-        filename=$(basename "$file" .Z80)
-        echo "  $filename -> $BEANZEE_DIR/$filename.asm"
+        echo "  $filename.asm -> $BEANZEE_DIR/"
         cp "$file" "$BEANZEE_DIR/$filename.asm"
     fi
 done
-
-# Post-conversion fix for DIST.asm (CPM only)
-# Replace ORG 1F0H with DEFS padding to reach offset 0xF0 within module
-# (DIST module linked at 0x100, so offset 0xF0 = address 0x1F0)
-if [ -f "$CPM_DIR/DIST.asm" ]; then
-    echo "Applying DIST.asm modular build fix..."
-    sed -i.bak \
-        -e 's/^[[:space:]]*; ORG 1F0H$/\tDEFS 0F0H - $, 0\t; Pad to offset 0xF0 (address 0x1F0 when linked at 0x100)/' \
-        "$CPM_DIR/DIST.asm"
-    rm -f "$CPM_DIR/DIST.asm.bak"
-fi
-
-# Post-conversion fix for DATA.asm
-# Add SECTION and ORG directives so the linker places DATA at a fixed address
-# DATA_ORG is defined via -D flag at assembly time (0x4B00 for CPM, 0x4C00 for Acorn)
-for target_dir in "$CPM_DIR" "$ACORN_DIR" "$BEANZEE_DIR"; do
-    if [ -f "$target_dir/DATA.asm" ]; then
-        echo "Applying $target_dir/DATA.asm section placement fix..."
-        temp_file=$(mktemp)
-        {
-            echo "    SECTION data"
-            echo "    ORG DATA_ORG"
-            cat "$target_dir/DATA.asm"
-        } > "$temp_file"
-        mv "$temp_file" "$target_dir/DATA.asm"
-    fi
-done
-
-echo ""
-echo "Translation complete."
-echo "Converted files saved to: $CPM_DIR/, $ACORN_DIR/ and $BEANZEE_DIR/"
 
 # Create hex dumps of reference binaries
 echo ""
@@ -177,6 +172,7 @@ for target_dir in bin/cpm bin/acorn; do
 done
 
 echo ""
-echo "To build: build/cpm/build.sh     (CP/M target)"
-echo "          build/acorn/build.sh   (Acorn tube target)"
-echo "          build/beanzee/build.sh (BeanZee target)"
+echo "Conversion complete."
+echo "To build: targets/cpm/build.sh     (CP/M target)"
+echo "          targets/acorn/build.sh   (Acorn tube target)"
+echo "          targets/beanzee/build.sh (BeanZee target)"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # Build BBC BASIC Z80 (BeanZee target)
-# Usage: cd build/beanzee && ./build.sh
+# Usage: cd targets/beanzee && ./build.sh
 #
 # Output: bbcbasic.{bin,hex,map}
 #
@@ -14,7 +14,7 @@
 set -e
 cd "$(dirname "$0")"
 
-# Core modules (converted from src/) plus BeanZee-specific modules (from src/beanzee/)
+# Core modules (converted from src/) plus BeanZee-specific modules (primary sources)
 MODULES="BDIST MAIN EXEC EVAL ASMB MATH BHOOK BMOS DATA"
 OUTPUT_NAME="bbcbasic"
 CODE_ORG="0x0000"

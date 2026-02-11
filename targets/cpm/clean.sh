@@ -2,7 +2,7 @@
 
 # Clean build artifacts for CP/M target
 # Preserves converted .asm source files
-# Usage: cd build/cpm && ./clean.sh
+# Usage: cd targets/cpm && ./clean.sh
 
 set -e
 cd "$(dirname "$0")"

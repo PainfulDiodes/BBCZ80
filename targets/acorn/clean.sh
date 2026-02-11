@@ -2,7 +2,7 @@
 
 # Clean build artifacts for Acorn tube target
 # Preserves converted .asm source files
-# Usage: cd build/acorn && ./clean.sh
+# Usage: cd targets/acorn && ./clean.sh
 
 set -e
 cd "$(dirname "$0")"
