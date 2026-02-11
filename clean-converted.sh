@@ -10,7 +10,7 @@
 #   - Hex dumps of reference binaries
 #
 # Does NOT remove:
-#   - Primary source files (BDIST.asm, BMOS.asm, BHOOK.asm in targets/beanzee/)
+#   - Primary source files (BEANZEE.asm, BMOS.asm, BHOOK.asm in targets/beanzee/)
 #   - Other build outputs (.bin, .map, .hex) - use per-target clean.sh for those
 
 set -e

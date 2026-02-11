@@ -163,7 +163,7 @@ targets/
     bbcbasic.bin/hex/map  Build output
   beanzee/                BeanZee target (self-contained)
     build.sh              Build script (9 modules, DATA at 0x8000)
-    BDIST.asm             BeanZee-specific primary source
+    BEANZEE.asm           BeanZee-specific primary source
     BHOOK.asm             BeanZee-specific primary source
     BMOS.asm              BeanZee-specific primary source
     *.asm                 Copied converted source files

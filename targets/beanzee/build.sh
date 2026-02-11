@@ -15,7 +15,7 @@ set -e
 cd "$(dirname "$0")"
 
 # Core modules (converted from src/) plus BeanZee-specific modules (primary sources)
-MODULES="BDIST MAIN EXEC EVAL ASMB MATH BHOOK BMOS DATA"
+MODULES="BEANZEE MAIN EXEC EVAL ASMB MATH BHOOK BMOS DATA"
 OUTPUT_NAME="bbcbasic"
 CODE_ORG="0x0000"
 DATA_ORG="0x8000"

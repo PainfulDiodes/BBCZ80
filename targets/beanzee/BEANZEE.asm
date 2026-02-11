@@ -1,4 +1,4 @@
-; BDIST.Z80 - BeanZee Entry Point and Hardware Functions
+; BEANZEE.Z80 - BeanZee Entry Point and Hardware Functions
 ;
 ; Entry point for BBC BASIC Z80 on the BeanZee system.
 ; ROM boot at address 0x0000. Code in ROM (0x0000-0x7FFF),
@@ -7,7 +7,7 @@
 ; Provides screen control and time functions required by
 ; the core interpreter (EXEC.Z80, EVAL.Z80).
 ;
-; cf. DIST.Z80 (CP/M entry point)
+; cf. DIST.Z80 (CP/M), ACORN.Z80 (Acorn tube)
 ;
     PUBLIC CLRSCN
     PUBLIC PUTCSR
