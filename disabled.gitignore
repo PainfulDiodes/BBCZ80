@@ -6,9 +6,9 @@
 *.o
 *.ko
 *.obj
-build/*
-!build/build.sh
-!build/clean.sh
+targets/*
+!targets/build.sh
+!targets/clean.sh
 
 # Linker output
 *.ilk

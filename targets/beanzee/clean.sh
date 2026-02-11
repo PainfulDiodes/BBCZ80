@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 
-# Clean build artifacts for CP/M target
-# Preserves converted .asm source files
-# Usage: cd build/cpm && ./clean.sh
+# Clean build artifacts for BeanZee target
+# Usage: cd targets/beanzee && ./clean.sh
 
 set -e
 cd "$(dirname "$0")"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-# Build BBC BASIC Z80 (Acorn tube target)
-# Usage: cd build/acorn && ./build.sh
+# Build BBC BASIC Z80 (CP/M target)
+# Usage: cd targets/cpm && ./build.sh
 #
 # Output: bbcbasic.{bin,hex,map}
 #
@@ -11,13 +11,13 @@
 set -e
 cd "$(dirname "$0")"
 
-MODULES="MAIN EXEC EVAL ASMB MATH ACORN AMOS DATA"
+MODULES="DIST MAIN EXEC EVAL ASMB MATH HOOK CMOS DATA"
 OUTPUT_NAME="bbcbasic"
 CODE_ORG="0x0100"
-DATA_ORG="0x4C00"
+DATA_ORG="0x4B00"
 
-echo "Building BBC BASIC Z80 (acorn)"
-echo "=============================="
+echo "Building BBC BASIC Z80 (cpm)"
+echo "============================"
 
 if [ ! -f "MAIN.asm" ]; then
     echo "Error: Converted source files not found."
@@ -76,7 +76,7 @@ echo "  Binary: $OUTPUT_NAME.bin ($BIN_SIZE bytes at $CODE_ORG)"
 echo "  Hex:    $OUTPUT_NAME.hex"
 echo "  Map:    $OUTPUT_NAME.map"
 
-REF_BIN="../../bin/acorn/BBCBASIC.COM"
+REF_BIN="../../bin/cpm/BBCBASIC.COM"
 if [ -f "$REF_BIN" ]; then
     REF_SIZE=$(wc -c < "$REF_BIN" | tr -d ' ')
     echo ""
