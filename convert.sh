@@ -124,7 +124,7 @@ if [ -f "$SRC_DIR/MAIN.asm" ]; then
     temp_file=$(mktemp)
     sed \
         -e 's/DEFM "BBC BASIC (Z80) Version 5\.00  "/DEFM "Z80 BBC BASIC 5.00"/' \
-        -e 's/DEFM "(C) Copyright R\.T\.Russell 2025"/DEFM "(C) R.T.Russell\\n2025"/' \
+        -e 's/DEFM "(C) Copyright R\.T\.Russell 2025"/DEFM "(c) RT Russell 2025"/' \
         "$SRC_DIR/MAIN.asm" > "$temp_file"
     mv "$temp_file" "$SRC_DIR/MAIN_SM_DSP.asm"
 fi
